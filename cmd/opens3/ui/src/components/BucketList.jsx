@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Database, Plus, Trash2, ArrowRight, RefreshCw } from 'lucide-react';
+import { Database, Plus, Trash2, ArrowRight, RefreshCw, Globe, Lock } from 'lucide-react';
 import { api } from '../api.js';
 import { Modal } from './Modal.jsx';
 
@@ -57,6 +57,17 @@ export function BucketList({ onSelectBucket, showToast }) {
     }
   };
 
+  const handleTogglePublic = async (name, currentlyPublic, e) => {
+    e.stopPropagation();
+    try {
+      await api.setBucketPublic(name, !currentlyPublic);
+      showToast(`Bucket "${name}" is now ${!currentlyPublic ? 'public' : 'private'}`, 'success');
+      load();
+    } catch (err) {
+      showToast('Update failed: ' + err.message, 'error');
+    }
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -105,6 +116,13 @@ export function BucketList({ onSelectBucket, showToast }) {
               </div>
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button
+                  onClick={(e) => handleTogglePublic(b.name, b.public, e)}
+                  className={`p-1.5 rounded-lg text-gray-400 ${b.public ? 'hover:bg-orange-50 hover:text-orange-600' : 'hover:bg-green-50 hover:text-green-600'}`}
+                  title={b.public ? 'Make private' : 'Make public'}
+                >
+                  {b.public ? <Lock size={15} /> : <Globe size={15} />}
+                </button>
+                <button
                   onClick={(e) => handleDelete(b.name, e)}
                   className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-600"
                   title="Delete bucket"
@@ -123,6 +141,17 @@ export function BucketList({ onSelectBucket, showToast }) {
                 <p className="text-gray-400 text-xs">Size</p>
                 <p className="font-semibold text-gray-700">{formatBytes(b.size)}</p>
               </div>
+            </div>
+            <div className="mt-3">
+              {b.public ? (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+                  <Globe size={11} /> Public
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-50 text-gray-500">
+                  <Lock size={11} /> Private
+                </span>
+              )}
             </div>
           </div>
         ))}

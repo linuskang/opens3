@@ -344,3 +344,108 @@ writeError(w, r, http.StatusNotFound, "NoSuchCORSConfiguration", "The CORS confi
 func (h *Handler) putBucketCors(w http.ResponseWriter, r *http.Request) {
 w.WriteHeader(http.StatusOK)
 }
+
+// ──────────────────────────────────────────────────────────────────────────────
+// GetBucketAcl  GET /{bucket}?acl
+// ──────────────────────────────────────────────────────────────────────────────
+
+type aclResult struct {
+XMLName           xml.Name    `xml:"AccessControlPolicy"`
+Xmlns             string      `xml:"xmlns,attr"`
+Owner             owner       `xml:"Owner"`
+AccessControlList []aclGrant  `xml:"AccessControlList>Grant"`
+}
+
+type aclGrant struct {
+Grantee    aclGrantee `xml:"Grantee"`
+Permission string     `xml:"Permission"`
+}
+
+type aclGrantee struct {
+Xmlns string `xml:"xmlns:xsi,attr"`
+Type  string `xml:"xsi:type,attr"`
+URI   string `xml:"URI,omitempty"`
+ID    string `xml:"ID,omitempty"`
+}
+
+func (h *Handler) getBucketAcl(w http.ResponseWriter, r *http.Request) {
+bucket := mux.Vars(r)["bucket"]
+meta, err := h.store.HeadBucket(bucket)
+if err != nil {
+writeStorageError(w, r, err)
+return
+}
+
+result := aclResult{
+Xmlns: "http://s3.amazonaws.com/doc/2006-03-01/",
+Owner: owner{ID: "opens3", DisplayName: "opens3"},
+AccessControlList: []aclGrant{
+{
+Grantee: aclGrantee{
+Xmlns: "http://www.w3.org/2001/XMLSchema-instance",
+Type:  "CanonicalUser",
+ID:    "opens3",
+},
+Permission: "FULL_CONTROL",
+},
+},
+}
+
+if meta.Public {
+result.AccessControlList = append(result.AccessControlList, aclGrant{
+Grantee: aclGrantee{
+Xmlns: "http://www.w3.org/2001/XMLSchema-instance",
+Type:  "Group",
+URI:   "http://acs.amazonaws.com/groups/global/AllUsers",
+},
+Permission: "READ",
+})
+}
+
+writeXML(w, http.StatusOK, result)
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// PutBucketAcl  PUT /{bucket}?acl
+// ──────────────────────────────────────────────────────────────────────────────
+
+type putAclRequest struct {
+XMLName           xml.Name    `xml:"AccessControlPolicy"`
+AccessControlList []aclGrant  `xml:"AccessControlList>Grant"`
+}
+
+func (h *Handler) putBucketAcl(w http.ResponseWriter, r *http.Request) {
+bucket := mux.Vars(r)["bucket"]
+
+// Support canned ACL via header (x-amz-acl: public-read or private).
+cannedACL := r.Header.Get("x-amz-acl")
+if cannedACL == "" {
+cannedACL = r.Header.Get("X-Amz-Acl")
+}
+
+var public bool
+switch cannedACL {
+case "public-read", "public-read-write":
+public = true
+case "private", "authenticated-read":
+public = false
+default:
+// Parse XML body if no canned ACL header.
+var req putAclRequest
+if err := xml.NewDecoder(r.Body).Decode(&req); err == nil {
+for _, grant := range req.AccessControlList {
+if grant.Grantee.URI == "http://acs.amazonaws.com/groups/global/AllUsers" &&
+(grant.Permission == "READ" || grant.Permission == "FULL_CONTROL") {
+public = true
+break
+}
+}
+}
+}
+
+if err := h.store.SetBucketPublic(bucket, public); err != nil {
+writeStorageError(w, r, err)
+return
+}
+w.WriteHeader(http.StatusOK)
+}
