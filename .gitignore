@@ -1,0 +1,21 @@
+# Go build artifacts
+/opens3
+/opens3.exe
+*.test
+*.out
+
+# Node modules and build output
+cmd/opens3/ui/node_modules/
+cmd/opens3/ui/dist/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor
+.idea/
+.vscode/
+*.swp
+
+# Data directory
+/data/
