@@ -77,8 +77,8 @@ return
 result := make([]bucketInfo, 0, len(buckets))
 for _, b := range buckets {
 info := bucketInfo{Name: b.Name, CreatedAt: b.CreatedAt}
-// Count objects and sum sizes.
-res, _ := h.store.ListObjects(b.Name, "", "", "", 1000000)
+// Count objects and sum sizes using a reasonable page size.
+res, _ := h.store.ListObjects(b.Name, "", "", "", 10000)
 if res != nil {
 info.Objects = len(res.Objects)
 for _, obj := range res.Objects {
@@ -266,7 +266,7 @@ buckets, _ := h.store.ListBuckets()
 var totalObjects int
 var totalSize int64
 for _, b := range buckets {
-res, _ := h.store.ListObjects(b.Name, "", "", "", 1000000)
+res, _ := h.store.ListObjects(b.Name, "", "", "", 10000)
 if res != nil {
 totalObjects += len(res.Objects)
 for _, obj := range res.Objects {

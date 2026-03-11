@@ -1,6 +1,6 @@
 # Go build artifacts
-opens3
-*.exe
+/opens3
+/opens3.exe
 *.test
 *.out
 

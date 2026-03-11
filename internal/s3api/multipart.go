@@ -56,7 +56,6 @@ writeXML(w, http.StatusOK, result)
 func (h *Handler) uploadPart(w http.ResponseWriter, r *http.Request) {
 vars := mux.Vars(r)
 bucket := vars["bucket"]
-key := vars["key"]
 q := r.URL.Query()
 
 uploadID := q.Get("uploadId")
@@ -66,7 +65,6 @@ if err != nil || partNum < 1 || partNum > 10000 {
 writeError(w, r, http.StatusBadRequest, "InvalidArgument", "invalid part number")
 return
 }
-_ = key // key is part of the upload context
 
 etag, err := h.store.UploadPart(uploadID, partNum, r.Body)
 if err != nil {
