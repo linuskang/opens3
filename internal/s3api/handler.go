@@ -59,6 +59,8 @@ case q.Has("versioning"):
 h.getBucketVersioning(w, r)
 case q.Has("cors"):
 h.getBucketCors(w, r)
+case q.Has("acl"):
+h.getBucketAcl(w, r)
 case q.Has("uploads"):
 h.listMultipartUploads(w, r)
 default:
@@ -70,6 +72,8 @@ case http.MethodPut:
 switch {
 case q.Has("cors"):
 h.putBucketCors(w, r)
+case q.Has("acl"):
+h.putBucketAcl(w, r)
 default:
 h.createBucket(w, r)
 }
@@ -128,6 +132,7 @@ writeError(w, r, http.StatusMethodNotAllowed, "MethodNotAllowed", "method not al
 
 // authMiddleware verifies AWS Signature V4 on all requests.
 // Browser GET / with no auth is redirected to the web UI.
+// Unauthenticated GET and HEAD requests on public buckets are allowed.
 func (h *Handler) authMiddleware(next http.Handler) http.Handler {
 return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 // Allow unauthenticated OPTIONS (CORS pre-flight).
@@ -142,6 +147,17 @@ r.Header.Get("Authorization") == "" &&
 r.URL.Query().Get("X-Amz-Signature") == "" {
 http.Redirect(w, r, "/_opens3/", http.StatusFound)
 return
+}
+
+// Allow unauthenticated read-only access to public buckets.
+if (r.Method == http.MethodGet || r.Method == http.MethodHead) &&
+r.Header.Get("Authorization") == "" &&
+r.URL.Query().Get("X-Amz-Signature") == "" {
+vars := mux.Vars(r)
+if bucket := vars["bucket"]; bucket != "" && h.store.IsBucketPublic(bucket) {
+next.ServeHTTP(w, r)
+return
+}
 }
 
 if err := h.verifier.Verify(r); err != nil {

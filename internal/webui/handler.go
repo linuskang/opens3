@@ -33,6 +33,7 @@ api := r.PathPrefix("/_opens3/api").Subrouter()
 api.HandleFunc("/buckets", h.listBuckets).Methods(http.MethodGet)
 api.HandleFunc("/buckets", h.createBucket).Methods(http.MethodPost)
 api.HandleFunc("/buckets/{bucket}", h.deleteBucket).Methods(http.MethodDelete)
+api.HandleFunc("/buckets/{bucket}", h.updateBucket).Methods(http.MethodPatch)
 api.HandleFunc("/buckets/{bucket}/objects", h.listObjects).Methods(http.MethodGet)
 api.HandleFunc("/buckets/{bucket}/objects", h.uploadObject).Methods(http.MethodPost)
 api.HandleFunc("/buckets/{bucket}/objects/{key:.+}", h.deleteObject).Methods(http.MethodDelete)
@@ -65,6 +66,7 @@ Name      string    `json:"name"`
 CreatedAt time.Time `json:"created_at"`
 Objects   int       `json:"objects"`
 Size      int64     `json:"size"`
+Public    bool      `json:"public"`
 }
 
 func (h *Handler) listBuckets(w http.ResponseWriter, r *http.Request) {
@@ -76,7 +78,7 @@ return
 
 result := make([]bucketInfo, 0, len(buckets))
 for _, b := range buckets {
-info := bucketInfo{Name: b.Name, CreatedAt: b.CreatedAt}
+info := bucketInfo{Name: b.Name, CreatedAt: b.CreatedAt, Public: b.Public}
 // Count objects and sum sizes using a reasonable page size.
 res, _ := h.store.ListObjects(b.Name, "", "", "", 10000)
 if res != nil {
@@ -112,6 +114,30 @@ writeAPIError(w, http.StatusConflict, err.Error())
 return
 }
 w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handler) updateBucket(w http.ResponseWriter, r *http.Request) {
+bucket := mux.Vars(r)["bucket"]
+var req struct {
+Public *bool `json:"public"`
+}
+if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+writeAPIError(w, http.StatusBadRequest, "invalid JSON format")
+return
+}
+if req.Public == nil {
+writeAPIError(w, http.StatusBadRequest, "missing required field: public")
+return
+}
+if err := h.store.SetBucketPublic(bucket, *req.Public); err != nil {
+if s3err, ok := err.(*storage.S3Error); ok && s3err.Code == "NoSuchBucket" {
+writeAPIError(w, http.StatusNotFound, err.Error())
+return
+}
+writeAPIError(w, http.StatusInternalServerError, err.Error())
+return
+}
+writeJSON(w, http.StatusOK, map[string]interface{}{"name": bucket, "public": *req.Public})
 }
 
 // ──────────────────────────────────────────────────────────────────────────────

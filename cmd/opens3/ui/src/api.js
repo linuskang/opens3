@@ -25,6 +25,7 @@ export const api = {
   listBuckets: () => request('GET', '/buckets'),
   createBucket: (name) => request('POST', '/buckets', { name }),
   deleteBucket: (name) => request('DELETE', `/buckets/${encodeURIComponent(name)}`),
+  setBucketPublic: (name, isPublic) => request('PATCH', `/buckets/${encodeURIComponent(name)}`, { public: isPublic }),
 
   // Objects
   listObjects: (bucket, prefix = '', delimiter = '/') =>

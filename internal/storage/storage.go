@@ -22,6 +22,7 @@ type BucketMeta struct {
 Name      string    `json:"name"`
 CreatedAt time.Time `json:"created_at"`
 Region    string    `json:"region"`
+Public    bool      `json:"public"`
 }
 
 // ObjectMeta holds metadata for a stored object.
@@ -146,6 +147,31 @@ func (b *Backend) HeadBucket(name string) (*BucketMeta, error) {
 b.mu.RLock()
 defer b.mu.RUnlock()
 return b.readBucketMeta(name)
+}
+
+// SetBucketPublic sets or clears the public-read flag for a bucket.
+func (b *Backend) SetBucketPublic(name string, public bool) error {
+b.mu.Lock()
+defer b.mu.Unlock()
+
+meta, err := b.readBucketMeta(name)
+if err != nil {
+return err
+}
+meta.Public = public
+return writeMeta(b.bucketMetaFile(name), meta)
+}
+
+// IsBucketPublic reports whether the bucket exists and is public.
+// It returns false (not an error) when the bucket does not exist.
+func (b *Backend) IsBucketPublic(name string) bool {
+b.mu.RLock()
+defer b.mu.RUnlock()
+meta, err := b.readBucketMeta(name)
+if err != nil {
+return false
+}
+return meta.Public
 }
 
 // ListBuckets returns all buckets.
