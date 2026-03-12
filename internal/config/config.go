@@ -7,8 +7,10 @@ import (
 
 // Config holds all server configuration.
 type Config struct {
-	// Port is the HTTP port to listen on.
-	Port int
+	// APIPort is the HTTP port for the S3-compatible bucket API.
+	APIPort int
+	// UIPort is the HTTP port for the web UI.
+	UIPort int
 	// DataDir is the root directory for storing data.
 	DataDir string
 	// AccessKey is the AWS-style access key for authentication.
@@ -23,10 +25,22 @@ type Config struct {
 
 // Load reads configuration from environment variables with sensible defaults.
 func Load() *Config {
-	port := 9000
-	if v := os.Getenv("OPENS3_PORT"); v != "" {
+	apiPort := 9001
+	if v := os.Getenv("OPENS3_API_PORT"); v != "" {
 		if p, err := strconv.Atoi(v); err == nil {
-			port = p
+			apiPort = p
+		}
+	} else if v := os.Getenv("OPENS3_PORT"); v != "" {
+		// OPENS3_PORT is a legacy alias for OPENS3_API_PORT.
+		if p, err := strconv.Atoi(v); err == nil {
+			apiPort = p
+		}
+	}
+
+	uiPort := 9000
+	if v := os.Getenv("OPENS3_UI_PORT"); v != "" {
+		if p, err := strconv.Atoi(v); err == nil {
+			uiPort = p
 		}
 	}
 
@@ -53,7 +67,8 @@ func Load() *Config {
 	uiDisabled := os.Getenv("OPENS3_UI_DISABLED") == "true"
 
 	return &Config{
-		Port:      port,
+		APIPort:   apiPort,
+		UIPort:    uiPort,
 		DataDir:   dataDir,
 		AccessKey: accessKey,
 		SecretKey: secretKey,

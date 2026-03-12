@@ -4,6 +4,7 @@ services:
     container_name: opens3
     ports:
       - "9000:9000"
+      - "9001:9001"
     volumes:
       - opens3-data:/data
     environment:

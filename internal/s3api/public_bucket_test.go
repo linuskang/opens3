@@ -31,7 +31,7 @@ verifier := auth.NewVerifier("minioadmin", "minioadmin", "us-east-1")
 r := mux.NewRouter()
 s3Handler := s3api.NewHandler(store, verifier, "us-east-1")
 s3Handler.Register(r)
-uiHandler := webui.NewHandler(store)
+uiHandler := webui.NewHandler(store, 9001)
 uiHandler.Register(r)
 
 ts := httptest.NewServer(r)
