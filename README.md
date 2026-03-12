@@ -1,19 +1,8 @@
 # Opens3
 
-A lightweight, self-hosted, **AWS S3-compatible** object storage server with a web UI, packaged as a single Docker container.
+A lightweight, fully open source, **S3 compatible** object storage server with a web UI.
 
-## Features
-
-- **Full S3 API compatibility** — works with any existing AWS S3 SDK (Python/boto3, Node.js, Go, AWS CLI, etc.)
-- **Web UI** — bucket browser, drag-and-drop upload, object download/delete, dashboard stats
-- **AWS Signature V4** authentication
-- **Multipart upload** support (large files)
-- **Range requests** (streaming, resume)
-- **CopyObject**, **DeleteObjects** (batch delete)
-- **Filesystem-based storage** — data persists in a mounted Docker volume
-- **Single Docker container** — no external dependencies
-
-## Quick Start with Docker
+## Quick Start
 
 ```bash
 docker run -d \
@@ -25,9 +14,6 @@ docker run -d \
   -e OPENS3_SECRET_KEY=minioadmin \
   ghcr.io/linuskang/opens3:latest
 ```
-
-Then open **http://localhost:9000** (redirects to the Web UI at `http://localhost:9000/_opens3/`).
-The S3-compatible API is available at **http://localhost:9001**.
 
 ## Build from Source
 
@@ -117,15 +103,6 @@ response = s3.get_object(Bucket='my-bucket', Key='file.txt')
 | CompleteMultipartUpload | `POST` | `/{bucket}/{key}?uploadId=X` |
 | AbortMultipartUpload | `DELETE` | `/{bucket}/{key}?uploadId=X` |
 | ListParts | `GET` | `/{bucket}/{key}?uploadId=X` |
-
-## Web UI
-
-The web UI is served at `http://localhost:9000/_opens3/` and provides:
-
-- **Dashboard** — live stats (buckets, objects, total size, uptime) + SDK quick-start code
-- **Buckets** — create/delete buckets, see object count and total size
-- **Object Browser** — navigate folder hierarchy, upload (drag & drop or file picker), download, delete
-- **Server Info** — connection details and supported operations
 
 ## License
 
