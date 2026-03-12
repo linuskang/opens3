@@ -29,12 +29,6 @@ docker run -d \
 Then open **http://localhost:9000** (redirects to the Web UI at `http://localhost:9000/_opens3/`).
 The S3-compatible API is available at **http://localhost:9001**.
 
-## Docker Compose
-
-```bash
-docker compose up -d
-```
-
 ## Build from Source
 
 **Prerequisites:** Go 1.24+, Node.js 18+
@@ -85,54 +79,6 @@ s3 = boto3.client(
 s3.create_bucket(Bucket='my-bucket')
 s3.upload_file('file.txt', 'my-bucket', 'file.txt')
 response = s3.get_object(Bucket='my-bucket', Key='file.txt')
-```
-
-### AWS CLI
-
-```bash
-aws configure set aws_access_key_id minioadmin
-aws configure set aws_secret_access_key minioadmin
-aws configure set region us-east-1
-
-alias s3opens3='aws --endpoint-url http://localhost:9001 s3'
-
-s3opens3 mb s3://my-bucket
-s3opens3 cp file.txt s3://my-bucket/
-s3opens3 ls s3://my-bucket/
-```
-
-### Node.js (AWS SDK v3)
-
-```js
-import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
-
-const s3 = new S3Client({
-  endpoint: "http://localhost:9001",
-  region: "us-east-1",
-  credentials: { accessKeyId: "minioadmin", secretAccessKey: "minioadmin" },
-  forcePathStyle: true,   // required for path-style URLs
-});
-
-await s3.send(new PutObjectCommand({
-  Bucket: "my-bucket",
-  Key: "hello.txt",
-  Body: "Hello, World!",
-}));
-```
-
-### Go (AWS SDK v2)
-
-```go
-cfg, _ := config.LoadDefaultConfig(ctx,
-    config.WithRegion("us-east-1"),
-    config.WithCredentialsProvider(
-        credentials.NewStaticCredentialsProvider("minioadmin", "minioadmin", ""),
-    ),
-)
-client := s3.NewFromConfig(cfg, func(o *s3.Options) {
-    o.BaseEndpoint = aws.String("http://localhost:9001")
-    o.UsePathStyle = true
-})
 ```
 
 ## S3 API Reference
