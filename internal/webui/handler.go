@@ -18,12 +18,14 @@ import (
 
 // Handler provides the web UI API routes.
 type Handler struct {
-store *storage.Backend
+store   *storage.Backend
+apiPort int
 }
 
 // NewHandler constructs a web UI handler.
-func NewHandler(store *storage.Backend) *Handler {
-return &Handler{store: store}
+// apiPort is the port on which the S3-compatible API server is listening.
+func NewHandler(store *storage.Backend, apiPort int) *Handler {
+return &Handler{store: store, apiPort: apiPort}
 }
 
 // Register mounts web UI API routes onto the given router.
@@ -39,6 +41,7 @@ api.HandleFunc("/buckets/{bucket}/objects", h.uploadObject).Methods(http.MethodP
 api.HandleFunc("/buckets/{bucket}/objects/{key:.+}", h.deleteObject).Methods(http.MethodDelete)
 api.HandleFunc("/buckets/{bucket}/objects/{key:.+}", h.getObjectMeta).Methods(http.MethodHead)
 api.HandleFunc("/stats", h.stats).Methods(http.MethodGet)
+api.HandleFunc("/config", h.config).Methods(http.MethodGet)
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -330,4 +333,16 @@ w.Header().Set("ETag", meta.ETag)
 w.WriteHeader(http.StatusOK)
 io.Copy(w, rc) //nolint:errcheck
 }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Config endpoint
+// ──────────────────────────────────────────────────────────────────────────────
+
+type serverConfig struct {
+APIPort int `json:"api_port"`
+}
+
+func (h *Handler) config(w http.ResponseWriter, r *http.Request) {
+writeJSON(w, http.StatusOK, serverConfig{APIPort: h.apiPort})
 }

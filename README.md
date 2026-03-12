@@ -19,6 +19,7 @@ A lightweight, self-hosted, **AWS S3-compatible** object storage server with a w
 docker run -d \
   --name opens3 \
   -p 9000:9000 \
+  -p 9001:9001 \
   -v opens3-data:/data \
   -e OPENS3_ACCESS_KEY=minioadmin \
   -e OPENS3_SECRET_KEY=minioadmin \
@@ -26,6 +27,7 @@ docker run -d \
 ```
 
 Then open **http://localhost:9000** (redirects to the Web UI at `http://localhost:9000/_opens3/`).
+The S3-compatible API is available at **http://localhost:9001**.
 
 ## Docker Compose
 
@@ -57,7 +59,8 @@ All configuration is via environment variables:
 
 | Variable | Default | Description |
 |---|---|---|
-| `OPENS3_PORT` | `9000` | Port to listen on |
+| `OPENS3_API_PORT` | `9001` | Port for the S3-compatible bucket API |
+| `OPENS3_UI_PORT` | `9000` | Port for the web UI |
 | `OPENS3_DATA_DIR` | `/data` | Directory for data storage |
 | `OPENS3_ACCESS_KEY` | `minioadmin` | S3 access key |
 | `OPENS3_SECRET_KEY` | `minioadmin` | S3 secret key |
@@ -73,7 +76,7 @@ import boto3
 
 s3 = boto3.client(
     's3',
-    endpoint_url='http://localhost:9000',
+    endpoint_url='http://localhost:9001',
     aws_access_key_id='minioadmin',
     aws_secret_access_key='minioadmin',
     region_name='us-east-1',
@@ -91,7 +94,7 @@ aws configure set aws_access_key_id minioadmin
 aws configure set aws_secret_access_key minioadmin
 aws configure set region us-east-1
 
-alias s3opens3='aws --endpoint-url http://localhost:9000 s3'
+alias s3opens3='aws --endpoint-url http://localhost:9001 s3'
 
 s3opens3 mb s3://my-bucket
 s3opens3 cp file.txt s3://my-bucket/
@@ -104,7 +107,7 @@ s3opens3 ls s3://my-bucket/
 import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 
 const s3 = new S3Client({
-  endpoint: "http://localhost:9000",
+  endpoint: "http://localhost:9001",
   region: "us-east-1",
   credentials: { accessKeyId: "minioadmin", secretAccessKey: "minioadmin" },
   forcePathStyle: true,   // required for path-style URLs
@@ -127,7 +130,7 @@ cfg, _ := config.LoadDefaultConfig(ctx,
     ),
 )
 client := s3.NewFromConfig(cfg, func(o *s3.Options) {
-    o.BaseEndpoint = aws.String("http://localhost:9000")
+    o.BaseEndpoint = aws.String("http://localhost:9001")
     o.UsePathStyle = true
 })
 ```

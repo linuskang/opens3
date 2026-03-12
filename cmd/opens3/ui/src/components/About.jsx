@@ -1,6 +1,18 @@
+import { useEffect, useState } from 'react';
 import { Server, Key, Globe, Info } from 'lucide-react';
 
 export function About() {
+  const [apiPort, setApiPort] = useState(9001);
+
+  useEffect(() => {
+    fetch('/_opens3/api/config')
+      .then(r => r.json())
+      .then(d => { if (d.api_port) setApiPort(d.api_port); })
+      .catch(() => {});
+  }, []);
+
+  const apiBase = `${window.location.protocol}//${window.location.hostname}:${apiPort}`;
+
   return (
     <div>
       <h1 className="text-2xl font-bold text-gray-800 mb-6">Server Info</h1>
@@ -40,9 +52,15 @@ export function About() {
           </div>
           <dl className="space-y-3 text-sm">
             <div>
-              <dt className="text-gray-500 mb-1">Endpoint URL</dt>
+              <dt className="text-gray-500 mb-1">S3 API Endpoint</dt>
               <dd className="font-mono text-xs bg-gray-50 px-3 py-2 rounded-lg text-gray-800">
-                {window.location.protocol}//{window.location.hostname}:{window.location.port || 9000}
+                {apiBase}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-gray-500 mb-1">Web UI</dt>
+              <dd className="font-mono text-xs bg-gray-50 px-3 py-2 rounded-lg text-gray-800">
+                {window.location.protocol}//{window.location.hostname}:{window.location.port || 9000}/_opens3/
               </dd>
             </div>
             <div>
@@ -65,66 +83,25 @@ export function About() {
             <div>
               <p className="text-xs font-medium text-gray-500 mb-2">Python (boto3)</p>
               <pre className="bg-gray-900 text-green-400 text-xs p-4 rounded-lg overflow-x-auto font-mono">
-{`import boto3
-s3 = boto3.client(
-  's3',
-  endpoint_url='http://localhost:9000',
-  aws_access_key_id='minioadmin',
-  aws_secret_access_key='minioadmin',
-  region_name='us-east-1',
-)
-s3.create_bucket(Bucket='test')
-s3.upload_file('f.txt', 'test', 'f.txt')`}
+{"import boto3\ns3 = boto3.client(\n  's3',\n  endpoint_url='" + apiBase + "',\n  aws_access_key_id='minioadmin',\n  aws_secret_access_key='minioadmin',\n  region_name='us-east-1',\n)\ns3.create_bucket(Bucket='test')\ns3.upload_file('f.txt', 'test', 'f.txt')"}
               </pre>
             </div>
             <div>
               <p className="text-xs font-medium text-gray-500 mb-2">Node.js (AWS SDK v3)</p>
               <pre className="bg-gray-900 text-green-400 text-xs p-4 rounded-lg overflow-x-auto font-mono">
-{`import { S3Client, PutObjectCommand }
-  from "@aws-sdk/client-s3";
-const s3 = new S3Client({
-  endpoint: "http://localhost:9000",
-  region: "us-east-1",
-  credentials: {
-    accessKeyId: "minioadmin",
-    secretAccessKey: "minioadmin",
-  },
-  forcePathStyle: true,
-});`}
+{"import { S3Client, PutObjectCommand }\n  from \"@aws-sdk/client-s3\";\nconst s3 = new S3Client({\n  endpoint: \"" + apiBase + "\",\n  region: \"us-east-1\",\n  credentials: {\n    accessKeyId: \"minioadmin\",\n    secretAccessKey: \"minioadmin\",\n  },\n  forcePathStyle: true,\n});"}
               </pre>
             </div>
             <div>
               <p className="text-xs font-medium text-gray-500 mb-2">AWS CLI</p>
               <pre className="bg-gray-900 text-green-400 text-xs p-4 rounded-lg overflow-x-auto font-mono">
-{`aws configure set aws_access_key_id minioadmin
-aws configure set aws_secret_access_key minioadmin
-aws configure set region us-east-1
-
-aws --endpoint-url http://localhost:9000 \\
-  s3 ls
-aws --endpoint-url http://localhost:9000 \\
-  s3 mb s3://my-bucket
-aws --endpoint-url http://localhost:9000 \\
-  s3 cp file.txt s3://my-bucket/`}
+{"aws configure set aws_access_key_id minioadmin\naws configure set aws_secret_access_key minioadmin\naws configure set region us-east-1\n\naws --endpoint-url " + apiBase + " \\\n  s3 ls\naws --endpoint-url " + apiBase + " \\\n  s3 mb s3://my-bucket\naws --endpoint-url " + apiBase + " \\\n  s3 cp file.txt s3://my-bucket/"}
               </pre>
             </div>
             <div>
               <p className="text-xs font-medium text-gray-500 mb-2">Go (AWS SDK v2)</p>
               <pre className="bg-gray-900 text-green-400 text-xs p-4 rounded-lg overflow-x-auto font-mono">
-{`cfg, _ := config.LoadDefaultConfig(ctx,
-  config.WithRegion("us-east-1"),
-  config.WithCredentialsProvider(
-    credentials.NewStaticCredentialsProvider(
-      "minioadmin", "minioadmin", "",
-    ),
-  ),
-)
-client := s3.NewFromConfig(cfg, func(o *s3.Options) {
-  o.BaseEndpoint = aws.String(
-    "http://localhost:9000",
-  )
-  o.UsePathStyle = true
-})`}
+{"cfg, _ := config.LoadDefaultConfig(ctx,\n  config.WithRegion(\"us-east-1\"),\n  config.WithCredentialsProvider(\n    credentials.NewStaticCredentialsProvider(\n      \"minioadmin\", \"minioadmin\", \"\",\n    ),\n  ),\n)\nclient := s3.NewFromConfig(cfg, func(o *s3.Options) {\n  o.BaseEndpoint = aws.String(\"" + apiBase + "\")\n  o.UsePathStyle = true\n})"}
               </pre>
             </div>
           </div>

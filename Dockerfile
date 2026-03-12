@@ -44,9 +44,10 @@ RUN mkdir -p /data && chown opens3:opens3 /data
 USER opens3
 
 VOLUME ["/data"]
-EXPOSE 9000
+EXPOSE 9000 9001
 
-ENV OPENS3_PORT=9000 \
+ENV OPENS3_UI_PORT=9000 \
+    OPENS3_API_PORT=9001 \
     OPENS3_DATA_DIR=/data \
     OPENS3_ACCESS_KEY=minioadmin \
     OPENS3_SECRET_KEY=minioadmin \

@@ -23,12 +23,13 @@ var uiFS embed.FS
 func main() {
 cfg := config.Load()
 
-log.Printf("opens3 starting on :%d", cfg.Port)
+log.Printf("opens3 starting")
 log.Printf("  data dir  : %s", cfg.DataDir)
 log.Printf("  region    : %s", cfg.Region)
 log.Printf("  access key: %s", cfg.AccessKey)
+log.Printf("  S3 API    : http://localhost:%d", cfg.APIPort)
 if cfg.UIEnabled {
-log.Printf("  web UI    : http://localhost:%d/_opens3/", cfg.Port)
+log.Printf("  web UI    : http://localhost:%d/_opens3/", cfg.UIPort)
 }
 
 // Initialise storage backend.
@@ -40,20 +41,28 @@ log.Fatalf("storage init: %v", err)
 // Build authentication verifier.
 verifier := auth.NewVerifier(cfg.AccessKey, cfg.SecretKey, cfg.Region)
 
-r := mux.NewRouter()
-r.Use(recoveryMiddleware)
-
-// ── S3 API routes (registered first — highest priority) ───────────────────
+// ── S3 API server ─────────────────────────────────────────────────────────
+apiRouter := mux.NewRouter()
+apiRouter.Use(recoveryMiddleware)
 s3Handler := s3api.NewHandler(store, verifier, cfg.Region)
-s3Handler.Register(r)
+s3Handler.Register(apiRouter)
 
-// ── Web UI routes ─────────────────────────────────────────────────────────
+apiAddr := fmt.Sprintf(":%d", cfg.APIPort)
+apiSrv := &http.Server{
+Addr:    apiAddr,
+Handler: apiRouter,
+}
+
+// ── Web UI server ─────────────────────────────────────────────────────────
+uiRouter := mux.NewRouter()
+uiRouter.Use(recoveryMiddleware)
+
 if cfg.UIEnabled {
-uiHandler := webui.NewHandler(store)
-uiHandler.Register(r)
+uiHandler := webui.NewHandler(store, cfg.APIPort)
+uiHandler.Register(uiRouter)
 
 // Object download endpoint.
-r.PathPrefix("/_opens3/download/").Handler(
+uiRouter.PathPrefix("/_opens3/download/").Handler(
 http.StripPrefix("/_opens3/download", downloadRouter(store)),
 )
 
@@ -65,18 +74,37 @@ log.Fatalf("embed FS sub: %v", fsErr)
 
 // The SPA handler: serve static assets; fall back to index.html for
 // unknown paths (client-side routing).
-r.PathPrefix("/_opens3/").HandlerFunc(spaHandler(distFS))
+uiRouter.PathPrefix("/_opens3/").HandlerFunc(spaHandler(distFS))
+
+// Redirect root to the Web UI.
+uiRouter.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+http.Redirect(w, r, "/_opens3/", http.StatusFound)
+})
 }
 
-addr := fmt.Sprintf(":%d", cfg.Port)
-srv := &http.Server{
-Addr:    addr,
-Handler: r,
+uiAddr := fmt.Sprintf(":%d", cfg.UIPort)
+uiSrv := &http.Server{
+Addr:    uiAddr,
+Handler: uiRouter,
 }
 
-log.Printf("listening on %s", addr)
-if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-log.Fatalf("server error: %v", err)
+// Start S3 API server in a goroutine.
+go func() {
+log.Printf("S3 API listening on %s", apiAddr)
+if err := apiSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+log.Fatalf("S3 API server error: %v", err)
+}
+}()
+
+// Start Web UI server (blocks main goroutine).
+if cfg.UIEnabled {
+log.Printf("web UI listening on %s", uiAddr)
+if err := uiSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+log.Fatalf("web UI server error: %v", err)
+}
+} else {
+// If UI is disabled, just block on the API server.
+<-make(chan struct{})
 }
 }
 
